@@ -34,6 +34,8 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
 
   const createInitialVisitorRow = () => ({
     guest_date: format(new Date(), "yyyy-MM-dd"),
+    guest_name: "",
+    guest_mobile: "",
     guest_type: "Visitor",
     guest_from_id: "",
     guest_description: "",
@@ -194,6 +196,10 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
 
     // Validations
     for (let i = 0; i < visitorRows.length; i++) {
+      if (!visitorRows[i].guest_name) {
+        toast.error(`Please enter a name for visitor #${i + 1}`);
+        return;
+      }
       if (!visitorRows[i].guest_from_id) {
         toast.error(`Please select a member for visitor #${i + 1}`);
         return;
@@ -316,10 +322,10 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                   </span>
                 </div>
 
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-100">
+                <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50/30 p-3">
+                  <div className="max-h-[360px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pr-1">
                     {filteredMembers.length === 0 ? (
-                      <div className="p-8 text-center text-gray-400 text-sm">
+                      <div className="col-span-full p-8 text-center text-gray-400 text-sm bg-white rounded-lg border border-gray-150">
                         No members found matching "{searchTerm}"
                       </div>
                     ) : (
@@ -330,21 +336,25 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                         return (
                           <div
                             key={member.id}
-                            className="flex items-center space-x-3 px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                            onClick={() => handleToggleMember(member)}
+                            className={cn(
+                              "flex items-center space-x-3 px-3 py-2.5 rounded-lg border transition-all duration-200 cursor-pointer select-none",
+                              isChecked
+                                ? "bg-primary/5 border-primary/30 shadow-sm ring-1 ring-primary/20"
+                                : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50/50 hover:shadow-sm"
+                            )}
                           >
                             <Checkbox
                               id={`member-${member.id}`}
                               checked={isChecked}
                               onCheckedChange={() => handleToggleMember(member)}
+                              onClick={(e) => e.stopPropagation()}
                             />
-                            <div className="flex flex-col flex-1 leading-none">
-                              <Label
-                                htmlFor={`member-${member.id}`}
-                                className="font-medium text-sm cursor-pointer mb-1"
-                              >
+                            <div className="flex flex-col flex-1 min-w-0 leading-none">
+                              <span className="font-semibold text-sm cursor-pointer mb-1 truncate text-gray-800">
                                 {member.name}
-                              </Label>
-                              <span className="text-xs text-gray-500">
+                              </span>
+                              <span className="text-xs text-gray-500 truncate">
                                 Mobile: {member.mobile}
                               </span>
                             </div>
@@ -408,10 +418,12 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
               <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1 min-h-[200px] max-h-[50vh]">
                 {/* Desktop Header */}
                 <div className="hidden md:grid grid-cols-12 gap-3 pb-2 px-1 text-xs font-semibold text-gray-500 border-b border-gray-100">
-                  <div className="col-span-3">Date *</div>
-                  <div className="col-span-2">Type *</div>
-                  <div className="col-span-3">Invited By (Member) *</div>
-                  <div className="col-span-3">Description</div>
+                  <div className="col-span-2">Date *</div>
+                  <div className="col-span-2">Name *</div>
+                  <div className="col-span-2">Number</div>
+                  <div className="col-span-1">Type *</div>
+                  <div className="col-span-2">Invited By *</div>
+                  <div className="col-span-2">Description</div>
                   <div className="col-span-1 text-center">Action</div>
                 </div>
 
@@ -421,7 +433,7 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                     className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 md:p-1 bg-gray-50/50 border border-gray-200/80 rounded-xl md:border-none md:bg-transparent md:items-center relative shadow-sm md:shadow-none"
                   >
                     {/* Date Input */}
-                    <div className="col-span-1 md:col-span-3 space-y-1 md:space-y-0">
+                    <div className="col-span-1 md:col-span-2 space-y-1 md:space-y-0">
                       <Label className="md:hidden text-xs font-semibold text-gray-500">
                         Date *
                       </Label>
@@ -440,8 +452,47 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                       />
                     </div>
 
-                    {/* Type Selection */}
+                    {/* Name Input */}
                     <div className="col-span-1 md:col-span-2 space-y-1 md:space-y-0">
+                      <Label className="md:hidden text-xs font-semibold text-gray-500">
+                        Name *
+                      </Label>
+                      <Input
+                        placeholder="Guest Name"
+                        value={row.guest_name || ""}
+                        onChange={(e) =>
+                          handleChangeVisitorRow(
+                            index,
+                            "guest_name",
+                            e.target.value,
+                          )
+                        }
+                        required
+                        className="h-9"
+                      />
+                    </div>
+
+                    {/* Number Input */}
+                    <div className="col-span-1 md:col-span-2 space-y-1 md:space-y-0">
+                      <Label className="md:hidden text-xs font-semibold text-gray-500">
+                        Number
+                      </Label>
+                      <Input
+                        placeholder="Mobile Number"
+                        value={row.guest_mobile || ""}
+                        onChange={(e) =>
+                          handleChangeVisitorRow(
+                            index,
+                            "guest_mobile",
+                            e.target.value,
+                          )
+                        }
+                        className="h-9"
+                      />
+                    </div>
+
+                    {/* Type Selection */}
+                    <div className="col-span-1 md:col-span-1 space-y-1 md:space-y-0">
                       <Label className="md:hidden text-xs font-semibold text-gray-500">
                         Type *
                       </Label>
@@ -464,7 +515,7 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                     </div>
 
                     {/* Sponsoring Member Selection */}
-                    <div className="col-span-1 md:col-span-3 space-y-1 md:space-y-0">
+                    <div className="col-span-1 md:col-span-2 space-y-1 md:space-y-0">
                       <Label className="md:hidden text-xs font-semibold text-gray-500">
                         Invited By *
                       </Label>
@@ -488,7 +539,7 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                     </div>
 
                     {/* Description Input */}
-                    <div className="col-span-1 md:col-span-3 space-y-1 md:space-y-0">
+                    <div className="col-span-1 md:col-span-2 space-y-1 md:space-y-0">
                       <Label className="md:hidden text-xs font-semibold text-gray-500">
                         Description
                       </Label>
