@@ -39,6 +39,7 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [step, setStep] = useState("attendance"); // "attendance" or "visitors"
+  const [filterType, setFilterType] = useState("all"); // "all", "checked", "unchecked"
 
   const ITEMS_PER_PAGE = 10;
 
@@ -74,6 +75,7 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
     if (open && members.length > 0 && meetingRes) {
       const meetingData = meetingRes.data || meetingRes;
       setSearchTerm("");
+      setFilterType("all");
       const existingAttendanceStr = meetingData.meeting_attendance || "";
       const existingIds = new Set(
         existingAttendanceStr
@@ -92,6 +94,7 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
     } else if (!open) {
       setSelectedMembers([]);
       setSearchTerm("");
+      setFilterType("all");
       setStep("attendance");
       setVisitorRows([createInitialVisitorRow()]);
       setCurrentPage(1);
@@ -109,17 +112,35 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
     });
   };
 
+  const filteredMembers = members.filter((m) => {
+    const matchesSearch = (m.name || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const isChecked = selectedMembers.some((sm) => sm.id === m.id);
+    if (filterType === "checked") {
+      return matchesSearch && isChecked;
+    }
+    if (filterType === "unchecked") {
+      return matchesSearch && !isChecked;
+    }
+    return matchesSearch;
+  });
+
   const handleSelectAll = (checked) => {
     if (checked) {
-      setSelectedMembers(members);
+      setSelectedMembers((prev) => {
+        const newSelections = [...prev];
+        filteredMembers.forEach((m) => {
+          if (!newSelections.some((sm) => sm.id === m.id)) {
+            newSelections.push(m);
+          }
+        });
+        return newSelections;
+      });
     } else {
-      setSelectedMembers([]);
+      setSelectedMembers((prev) =>
+        prev.filter((m) => !filteredMembers.some((fm) => fm.id === m.id))
+      );
     }
   };
-
-  const filteredMembers = members.filter((m) =>
-    (m.name || "").toLowerCase().includes(searchTerm.toLowerCase()),
-  );
 
   const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -241,7 +262,8 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
   };
 
   const isAllSelected =
-    members.length > 0 && selectedMembers.length === members.length;
+    filteredMembers.length > 0 &&
+    filteredMembers.every((fm) => selectedMembers.some((sm) => sm.id === fm.id));
   const isLoading = membersLoading || meetingLoading;
 
   return (
@@ -280,6 +302,45 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                   />
                 </div>
 
+                <div className="flex gap-1.5 p-1 bg-gray-100/80 rounded-lg border border-gray-200/50">
+                  <button
+                    type="button"
+                    onClick={() => { setFilterType("all"); setCurrentPage(1); }}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer text-center",
+                      filterType === "all"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/30"
+                    )}
+                  >
+                    All ({members.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setFilterType("checked"); setCurrentPage(1); }}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer text-center",
+                      filterType === "checked"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/30"
+                    )}
+                  >
+                    Checked ({selectedMembers.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setFilterType("unchecked"); setCurrentPage(1); }}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer text-center",
+                      filterType === "unchecked"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-200/30"
+                    )}
+                  >
+                    Unchecked ({members.length - selectedMembers.length})
+                  </button>
+                </div>
+
                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -291,7 +352,7 @@ const AttendanceModal = ({ open, onClose, meetingId }) => {
                       htmlFor="select-all"
                       className="font-semibold cursor-pointer"
                     >
-                      Select All ({members.length})
+                      Select All ({filteredMembers.length})
                     </Label>
                   </div>
                   <span className="text-sm text-gray-500 font-medium">
